@@ -215,6 +215,7 @@ const buildCycle = (now, prayerTimes = DEFAULT_PRAYER_TIMES, arcSpec) => {
     nextPrayer,
     countdownMs: nextPrayer.date.getTime() - nowMs,
     progress: visualProgress,
+    sunPos: arcSpec ? getWavePos(arcSpec.cx, arcSpec.cy, arcSpec.rx, arcSpec.ry, visualProgress) : null,
     points: pointsWithProgress,
     segmentStart: currentIndex < 0 ? 0 : pointsWithProgress[currentIndex].progress,
     segmentEnd:
@@ -234,7 +235,7 @@ const getWavePos = (cx, cy, rx, ry, progress) => {
 
 const buildWavePath = (cx, cy, rx, ry, startP, endP) => {
   const points = [];
-  const steps = 40;
+  const steps = 30;
   for (let i = 0; i <= steps; i += 1) {
     const p = startP + (i / steps) * (endP - startP);
     const pos = getWavePos(cx, cy, rx, ry, p);
@@ -252,7 +253,14 @@ class PrayerArcWidget extends React.PureComponent {
     super(props);
 
     const now = new Date();
-    const cycle = buildCycle(now, DEFAULT_PRAYER_TIMES);
+    const arc = {
+      cx: 185,
+      cy: 170,
+      rx: 185,
+      ry: 50,
+    };
+
+    const cycle = buildCycle(now, DEFAULT_PRAYER_TIMES, arc);
 
     this.state = {
       now,
@@ -263,12 +271,8 @@ class PrayerArcWidget extends React.PureComponent {
       lastSyncAt: null,
     };
 
-    this.arc = {
-      cx: 185,
-      cy: 170,
-      rx: 185,
-      ry: 50,
-    };
+    this.arc = arc;
+    this.baseArc = buildWavePath(arc.cx, arc.cy, arc.rx, arc.ry, 0, 1);
 
     this.lastSecond = now.getSeconds();
     this.lastCoords = null;
@@ -321,7 +325,7 @@ class PrayerArcWidget extends React.PureComponent {
 
   tick() {
     const now = new Date();
-    const cycle = buildCycle(now, this.state.prayerTimes);
+    const cycle = buildCycle(now, this.state.prayerTimes, this.arc);
 
     this.setState({
       now,
@@ -441,7 +445,7 @@ class PrayerArcWidget extends React.PureComponent {
 
         const prayerTimes = buildPrayerTimesFromApi(payload.data.timings);
         const now = new Date();
-        const cycle = buildCycle(now, prayerTimes);
+        const cycle = buildCycle(now, prayerTimes, this.arc);
 
         this.lastFetchedCoords = coords;
         this.lastPrayerFetchAt = Date.now();
@@ -478,9 +482,7 @@ class PrayerArcWidget extends React.PureComponent {
       lastSyncAt,
     } = this.state;
     const theme = PRAYER_THEME[cycle.currentPrayer.name] || PRAYER_THEME.Fajr;
-
-    const sun = wavePosition(cycle.progress, this.arc);
-    const baseArc = buildWavePath(this.arc.cx, this.arc.cy, this.arc.rx, this.arc.ry, 0, 1);
+    const { sunPos } = cycle;
 
     const activeSegment = buildWavePath(
       this.arc.cx,
@@ -531,11 +533,11 @@ class PrayerArcWidget extends React.PureComponent {
           <text x="35" y="188" fontSize="8" fontWeight="600" fill="rgba(255,255,255,0.55)" letterSpacing="0.1em">SUNRISE</text>
           <text x="310" y="188" fontSize="8" fontWeight="600" fill="rgba(255,255,255,0.55)" letterSpacing="0.1em">SUNSET</text>
 
-          <path d={baseArc} className="arc-track" />
+          <path d={this.baseArc} className="arc-track" />
           <path d={activeSegment} className="arc-active" style={{ stroke: theme.segment }} />
 
           {cycle.points.map((point) => {
-            const pos = wavePosition(point.progress, this.arc);
+            const { pos } = point;
             const isActive = point.name === cycle.currentPrayer.name;
             return (
               <circle
@@ -549,7 +551,7 @@ class PrayerArcWidget extends React.PureComponent {
             );
           })}
 
-          <circle cx={sun.x} cy={sun.y} r="8" className="sun-core" style={{ fill: '#fff' }} filter="url(#sunGlow)" />
+          <circle cx={sunPos.x} cy={sunPos.y} r="8" className="sun-core" style={{ fill: '#fff' }} filter="url(#sunGlow)" />
         </svg>
 
         <div className="footer-info">
