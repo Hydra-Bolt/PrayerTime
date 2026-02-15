@@ -572,12 +572,12 @@ class PrayerArcWidget extends React.PureComponent {
 export const render = () => <PrayerArcWidget />;
 
 export const className = `
-  top: 50%;
-  left: 24px;
+  top: 51%;
+  left: 14px;
   transform: translateY(-50%);
 
   .prayer-widget {
-    width: 370px;
+    width: 21.5em;
     box-sizing: border-box;
     padding: 30px 28px 22px;
     color: #fff;
